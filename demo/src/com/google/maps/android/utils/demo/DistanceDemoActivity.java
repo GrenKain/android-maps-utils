@@ -84,10 +84,7 @@ public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.
         //Вычисляем угол мужду точками
         double distance4 = Math.round(SphericalUtil.computeHeading(mMarkerB.getPosition(), mMarkerС.getPosition()));
         mGradus.setText("Угол между B и А:(omputeHeading) "+ distance4+" градусов ");
-
-        //Вычисляем угол мужду точками
-        double distance5 = Math.round(SphericalUtil.computeOffset(mMarkerB.getPosition(), distance3*2,distance4*2);
-        mGradus.setText("Угол между B и А:(omputeHeading) "+ distance4+" градусов ");
+        
     }
     //рисуются линии между точками
     private void updatePolyline() {
