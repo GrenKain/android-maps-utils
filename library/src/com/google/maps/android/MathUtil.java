@@ -21,7 +21,7 @@ import static java.lang.Math.*;
 /**
  * Utility functions that are used my both PolyUtil and SphericalUtil.
  */
-class MathUtil {
+public class MathUtil {
     /**
      * The earth's radius, in meters.
      * Mean radius as defined by IUGG.
@@ -83,7 +83,7 @@ class MathUtil {
      * arcHav(x) == acos(1 - 2 * x) == 2 * asin(sqrt(x)).
      * The argument must be in [0, 1], and the result is positive.
      */
-    static double arcHav(double x) {
+    public static double arcHav(double x) {
         return 2 * asin(sqrt(x));
     }
     
@@ -108,7 +108,7 @@ class MathUtil {
     /**
      * Returns hav() of distance from (lat1, lng1) to (lat2, lng2) on the unit sphere.
      */
-    static double havDistance(double lat1, double lat2, double dLng) {
+    public static double havDistance(double lat1, double lat2, double dLng) {
         return hav(lat1 - lat2) + hav(dLng) * cos(lat1) * cos(lat2);
     }
 }

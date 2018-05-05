@@ -30,10 +30,19 @@ import com.google.maps.android.SphericalUtil;
 
 import java.util.Arrays;
 
+
+import static com.google.maps.android.MathUtil.arcHav;
+import static com.google.maps.android.MathUtil.havDistance;
+import static java.lang.Math.toRadians;
+
 public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.OnMarkerDragListener {
     private TextView mTextView;
+    private TextView textDistance;
+    private TextView mGradus;
+    private TextView textComputeOf;
     private Marker mMarkerA;
     private Marker mMarkerB;
+    private Marker mMarkerС;
     private Polyline mPolyline;
 
     @Override
@@ -44,25 +53,45 @@ public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.
     @Override
     protected void startDemo() {
         mTextView = (TextView) findViewById(R.id.textView);
+        textDistance = (TextView) findViewById(R.id.textDistance);
+        mGradus = (TextView) findViewById(R.id.mGradus);
+        textComputeOf = (TextView) findViewById(R.id.textComputeOf);
 
-        getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(-33.8256, 151.2395), 10));
+        // начальное отображение места при открытии и высота от него
+        getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(53.219240, 44.791624), 7));
         getMap().setOnMarkerDragListener(this);
 
-        mMarkerA = getMap().addMarker(new MarkerOptions().position(new LatLng(-33.9046, 151.155)).draggable(true));
-        mMarkerB = getMap().addMarker(new MarkerOptions().position(new LatLng(-33.8291, 151.248)).draggable(true));
+        mMarkerA = getMap().addMarker(new MarkerOptions().position(new LatLng(53.219240, 44.791624)).draggable(true));
+        mMarkerB = getMap().addMarker(new MarkerOptions().position(new LatLng(53.140714, 45.023023)).draggable(true));
+        mMarkerС = getMap().addMarker(new MarkerOptions().position(new LatLng(53.191571, 45.025854)).draggable(true));
         mPolyline = getMap().addPolyline(new PolylineOptions().geodesic(true));
 
-        Toast.makeText(this, "Drag the markers!", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Перетащите маркеры", Toast.LENGTH_LONG).show();
         showDistance();
     }
 
+    //вычисляем расстояние от А до B и от B до С после суммируем
     private void showDistance() {
         double distance = SphericalUtil.computeDistanceBetween(mMarkerA.getPosition(), mMarkerB.getPosition());
-        mTextView.setText("The markers are " + formatNumber(distance) + " apart.");
-    }
+        double distance2 = SphericalUtil.computeDistanceBetween(mMarkerB.getPosition(), mMarkerС.getPosition());
 
+        mTextView.setText("Расстаяние между маркерами: " + formatNumber(distance+distance2) + ".");
+
+        //расстояние между 2 и 3 в метрах
+        double distance3 = Math.round(SphericalUtil.computeDistanceBetween(mMarkerB.getPosition(), mMarkerС.getPosition()));
+        textDistance.setText("Дистанция от 2 до 3: "+ distance3);
+
+        //Вычисляем угол мужду точками
+        double distance4 = Math.round(SphericalUtil.computeHeading(mMarkerB.getPosition(), mMarkerС.getPosition()));
+        mGradus.setText("Угол между B и А:(omputeHeading) "+ distance4+" градусов ");
+
+        //Вычисляем угол мужду точками
+        double distance5 = Math.round(SphericalUtil.computeOffset(mMarkerB.getPosition(), distance3*2,distance4*2);
+        mGradus.setText("Угол между B и А:(omputeHeading) "+ distance4+" градусов ");
+    }
+    //рисуются линии между точками
     private void updatePolyline() {
-        mPolyline.setPoints(Arrays.asList(mMarkerA.getPosition(), mMarkerB.getPosition()));
+        mPolyline.setPoints(Arrays.asList(mMarkerA.getPosition(), mMarkerB.getPosition(),mMarkerС.getPosition()));
     }
 
     private String formatNumber(double distance) {
