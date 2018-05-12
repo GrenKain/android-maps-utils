@@ -16,11 +16,31 @@
 
 package com.google.maps.android.utils.demo;
 
+import android.Manifest;
+import android.app.Activity;
+import android.app.Fragment;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationListener;
+import android.os.Build;
+import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -29,40 +49,240 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.maps.android.SphericalUtil;
 
 import java.util.Arrays;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 import static com.google.maps.android.MathUtil.arcHav;
 import static com.google.maps.android.MathUtil.havDistance;
+import static com.google.maps.android.utils.demo.R.drawable.amu_bubble_mask;
 import static java.lang.Math.toRadians;
 
-public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.OnMarkerDragListener {
+public class DistanceDemoActivity extends BaseDemoActivity  implements GoogleMap.OnMarkerDragListener {
     private TextView mTextView;
     private TextView textDistance;
     private TextView mGradus;
-    private TextView textComputeOf;
+
+    private TextView latlng;
     private Marker mMarkerA;
     private Marker mMarkerB;
     private Marker mMarkerС;
+    private Marker myLocation;
     private Polyline mPolyline;
+    private BroadcastReceiver broadcastReceiver;
+
+    private TextView textView;
+    private Button btn_start, btn_stop;
+    GoogleMap map;
+    private static final String TAG=DistanceDemoActivity.class.getName();
+
+    public double lat;
+    public double lng;
+
+    TextView timerTextView;
+    long startTime = 0;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        btn_start = (Button) findViewById(R.id.btn_start);
+        btn_stop = (Button) findViewById(R.id.btn_stop);
+
+
+
+        if(!runtime_permissions())
+            enable_buttons();
+
+
+        if(broadcastReceiver == null){
+          broadcastReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+
+
+                  // double lat = (double) intent.getExtras().get("latitude");
+
+
+                    lat = intent.getExtras().getDouble("latitude");
+                    lng = intent.getExtras().getDouble("longitude");
+                   // latlng.append("\n" +intent.getExtras().get("all"));
+
+
+// ставит только одну точку на карте
+if (myLocation == null) {
+    myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true).icon(BitmapDescriptorFactory.fromResource(R.drawable.robot)));
+    myLocation.setTitle("myHome");
+    latlng.setTextSize(20);
+    latlng.setTextColor(Color.parseColor("#2EBA2E"));
+    latlng.setText(" GPS подключен.");
+}
+
+//Вычисляем угол мужду точками и обновляем
+                    double heading = Math.round(SphericalUtil.computeHeading(myLocation.getPosition(), mMarkerA.getPosition()));
+                    mGradus.setText("Угол между my lock and A "+ heading+" градусов ");
+
+
+                }
+           };
+        }
+        registerReceiver(broadcastReceiver,new IntentFilter("location_update"));
+
+
+
+    }
+    private void enable_buttons() {
+
+        btn_start.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i =new Intent(getApplicationContext(),GPS_Service.class);
+                startService(i);
+            }
+        });
+
+        btn_stop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                Intent i = new Intent(getApplicationContext(),GPS_Service.class);
+                stopService(i);
+
+            }
+        });
+
+    }
+
+    // обновление моего местонахождения
+    /*
+    private void setValues() {
+        Timer timer = new Timer();
+
+        timer.scheduleAtFixedRate(new TimerTask() {
+
+            @Override
+            public void run() {
+             //   final float value = Utils.randInt(-10, 35);
+                myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true));
+                myLocation.setTitle("myHome");
+              //  latlng.setText("Coord lat lng: "+lat+" "+lng);
+
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.i("Info", "My coorginaty refresh: " + myLocation);
+                        myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true));
+                        myLocation.setTitle("myHome");
+
+                    }
+                });
+            }
+        }, 0, 3500);
+    }
+
+*/
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(broadcastReceiver == null){
+            broadcastReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+
+
+
+
+
+            }
+            };
+        }
+        registerReceiver(broadcastReceiver,new IntentFilter("location_update"));
+
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(broadcastReceiver != null){
+            unregisterReceiver(broadcastReceiver);
+        }
+    }
+
+
+
+
+
+    private boolean runtime_permissions() {
+        if(Build.VERSION.SDK_INT >= 23 && ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},100);
+
+            return true;
+        }
+        return false;
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == 100){
+            if( grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED){
+                enable_buttons();
+            }else {
+                runtime_permissions();
+            }
+        }
+    }
+
+//********************************************
+
 
     @Override
     protected int getLayoutId() {
         return R.layout.distance_demo;
+
     }
+
+
 
     @Override
     protected void startDemo() {
+
+
+
         mTextView = (TextView) findViewById(R.id.textView);
         textDistance = (TextView) findViewById(R.id.textDistance);
         mGradus = (TextView) findViewById(R.id.mGradus);
-        textComputeOf = (TextView) findViewById(R.id.textComputeOf);
+        latlng= (TextView) findViewById(R.id.latlng);
+
+
 
         // начальное отображение места при открытии и высота от него
-        getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(53.219240, 44.791624), 7));
+        getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(53.219240, 44.791624), 10));
         getMap().setOnMarkerDragListener(this);
 
-        mMarkerA = getMap().addMarker(new MarkerOptions().position(new LatLng(53.219240, 44.791624)).draggable(true));
+
+
+
+        // для маркера местонахождения dragganblle false (наверное)
+
+        /*
+        // моё местонахождение
+        myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true));
+        myLocation.setTitle("myHome");
+*/
+
+
+
+        mMarkerA = getMap().addMarker(new MarkerOptions().position(new LatLng(53.355181, 44.831149)).draggable(true));
+        mMarkerA.setTitle("First point");
+
         mMarkerB = getMap().addMarker(new MarkerOptions().position(new LatLng(53.140714, 45.023023)).draggable(true));
+        mMarkerB.setTitle("Second point");
+
         mMarkerС = getMap().addMarker(new MarkerOptions().position(new LatLng(53.191571, 45.025854)).draggable(true));
         mPolyline = getMap().addPolyline(new PolylineOptions().geodesic(true));
 
@@ -72,6 +292,7 @@ public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.
 
     //вычисляем расстояние от А до B и от B до С после суммируем
     private void showDistance() {
+
         double distance = SphericalUtil.computeDistanceBetween(mMarkerA.getPosition(), mMarkerB.getPosition());
         double distance2 = SphericalUtil.computeDistanceBetween(mMarkerB.getPosition(), mMarkerС.getPosition());
 
@@ -83,12 +304,21 @@ public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.
 
         //Вычисляем угол мужду точками
         double distance4 = Math.round(SphericalUtil.computeHeading(mMarkerB.getPosition(), mMarkerС.getPosition()));
-        mGradus.setText("Угол между B и А:(omputeHeading) "+ distance4+" градусов ");
-        
+       // mGradus.setText("Угол между B и А:(ComputeHeading) "+ distance4+" градусов ");
+
+      //  latlng.setText("Coord lat lng: "+lat+" "+lng);
+
+        /*
+        //Вычисляем угол мужду моей координатой и точкой
+        double distance5 = Math.round(SphericalUtil.computeHeading(M.getPosition(), mMarkerС.getPosition()));
+        textComputeOf.setText("Моя координата и точка:(omputeHeading) "+ distance5+" градусов ");
+*/
+
+
     }
     //рисуются линии между точками
     private void updatePolyline() {
-        mPolyline.setPoints(Arrays.asList(mMarkerA.getPosition(), mMarkerB.getPosition(),mMarkerС.getPosition()));
+        mPolyline.setPoints(Arrays.asList(myLocation.getPosition(),mMarkerA.getPosition(), mMarkerB.getPosition(),mMarkerС.getPosition()));
     }
 
     private String formatNumber(double distance) {
@@ -120,4 +350,6 @@ public class DistanceDemoActivity extends BaseDemoActivity implements GoogleMap.
         showDistance();
         updatePolyline();
     }
+
+
 }
