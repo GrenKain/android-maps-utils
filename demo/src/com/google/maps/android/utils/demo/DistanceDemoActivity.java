@@ -78,11 +78,9 @@ public class DistanceDemoActivity extends BaseDemoActivity  implements GoogleMap
     private MapView mapView;
     GoogleMap map;
     private static final String TAG=DistanceDemoActivity.class.getName();
-
     public double myLat;
     public double myLng;
-    private LocationManager manager;
-    private Location loc;
+
 
 
     @Override
@@ -91,12 +89,8 @@ public class DistanceDemoActivity extends BaseDemoActivity  implements GoogleMap
         btn_start = (Button) findViewById(R.id.btn_start);
         btn_stop = (Button) findViewById(R.id.btn_stop);
 
-
-
         if(!runtime_permissions())
             enable_buttons();
-
-
         if(broadcastReceiver == null){
           broadcastReceiver = new BroadcastReceiver() {
                 @Override
@@ -109,11 +103,15 @@ public class DistanceDemoActivity extends BaseDemoActivity  implements GoogleMap
                     myLat = intent.getExtras().getDouble("latitude");
                     myLng = intent.getExtras().getDouble("longitude");
                    // latlng.append("\n" +intent.getExtras().get("all"));
-                    // начальное отображение места при открытии и высота от него
 
 
-// ставит только одну точку на карте , делаем её зелёного цвета
+
+
+// Если маркер myLocation пустой то выполняется это условие
 if (myLocation == null) {
+    double firstLat=myLat;
+    double firstLng=myLng;
+
     myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(myLat, myLng)).draggable(true).icon(
             BitmapDescriptorFactory
                     .defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
@@ -125,20 +123,22 @@ if (myLocation == null) {
 
     // начальное отображение места при открытии карты и высота от него
     getMap().moveCamera(CameraUpdateFactory
-            .newLatLngZoom(new LatLng(myLat, myLng), 5));
+            .newLatLngZoom(new LatLng(firstLat, firstLng), 10));
+
 
 }
 
 //Вычисляем угол мужду точками и обновляем
-                    double heading = Math.round(SphericalUtil.computeHeading(myLocation.getPosition(), mMarkerA.getPosition()));
-                    mGradus.setText("Угол между my lock and A "+ heading+" градусов ");
-
+                 double heading = Math.round(SphericalUtil.computeHeading(mMarkerA.getPosition(), mMarkerB.getPosition()));
+                  mGradus.setText("Угол между my lock and A "+ heading+" градусов ");
 
                 }
            };
         }
+        // BroadcastReceiver будет получать Intent-ы подходящие под условия IntentFilter
         registerReceiver(broadcastReceiver,new IntentFilter("location_update"));
     }
+
 
 
 
@@ -150,6 +150,9 @@ if (myLocation == null) {
             public void onClick(View view) {
                 Intent i =new Intent(getApplicationContext(),GPS_Service.class);
                 startService(i);
+
+
+
             }
         });
 
@@ -160,6 +163,10 @@ if (myLocation == null) {
                 Intent i = new Intent(getApplicationContext(),GPS_Service.class);
                 stopService(i);
 
+
+                latlng.setTextSize(20);
+                latlng.setTextColor(Color.parseColor("#A60000"));
+                latlng.setText(" GPS Отключен.");
             }
         });
 
@@ -183,8 +190,6 @@ if (myLocation == null) {
         registerReceiver(broadcastReceiver,new IntentFilter("location_update"));
 
     }
-
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -192,11 +197,6 @@ if (myLocation == null) {
             unregisterReceiver(broadcastReceiver);
         }
     }
-
-
-
-
-
     private boolean runtime_permissions() {
         if(Build.VERSION.SDK_INT >= 23 && ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED){
 
@@ -206,8 +206,6 @@ if (myLocation == null) {
         }
         return false;
     }
-
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -221,16 +219,11 @@ if (myLocation == null) {
     }
 
 //********************************************
-
-
     @Override
     protected int getLayoutId() {
         return R.layout.distance_demo;
 
     }
-
-
-
     @Override
     protected void startDemo() {
         mTextView = (TextView) findViewById(R.id.textView);
@@ -238,27 +231,20 @@ if (myLocation == null) {
         mGradus = (TextView) findViewById(R.id.mGradus);
         latlng= (TextView) findViewById(R.id.latlng);
         // начальное отображение места при открытии и высота от него
-        getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(53.219240, 44.791624), 10));
+        getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(53.219240, 44.791624), 0));
         getMap().setOnMarkerDragListener(this);
 
-
-
-
-        // для маркера местонахождения dragganblle false (наверное)
-
-
-
-
+        // прописываем маркеры
         mMarkerA = getMap().addMarker(new MarkerOptions().position(new LatLng(53.355181, 44.831149)).draggable(true));
-        mMarkerA.setTitle("First point");
-
+        mMarkerA.setTitle("A");
         mMarkerB = getMap().addMarker(new MarkerOptions().position(new LatLng(53.140714, 45.023023)).draggable(true));
-        mMarkerB.setTitle("Second point");
-
+        mMarkerB.setTitle("B");
         mMarkerС = getMap().addMarker(new MarkerOptions().position(new LatLng(53.191571, 45.025854)).draggable(true));
+        mMarkerС.setTitle("C");
+
         mPolyline = getMap().addPolyline(new PolylineOptions().geodesic(true));
 
-        Toast.makeText(this, "Перетащите маркеры", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Включите GPS для начала работы.", Toast.LENGTH_LONG).show();
         showDistance();
     }
 
@@ -276,21 +262,23 @@ if (myLocation == null) {
 
         //Вычисляем угол мужду точками
         double distance4 = Math.round(SphericalUtil.computeHeading(mMarkerB.getPosition(), mMarkerС.getPosition()));
-       // mGradus.setText("Угол между B и А:(ComputeHeading) "+ distance4+" градусов ");
 
-      //  latlng.setText("Coord lat lng: "+lat+" "+lng);
-
-        /*
-        //Вычисляем угол мужду моей координатой и точкой
-        double distance5 = Math.round(SphericalUtil.computeHeading(M.getPosition(), mMarkerС.getPosition()));
-        textComputeOf.setText("Моя координата и точка:(omputeHeading) "+ distance5+" градусов ");
-*/
 
 
     }
+
+    private void computeHeading(){
+
+        double heading = Math.round(SphericalUtil.computeHeading(mMarkerA.getPosition(), mMarkerB.getPosition()));
+        mGradus.setText("Угол между my lock and A "+ heading+" градусов ");
+    }
     //рисуются линии между точками
     private void updatePolyline() {
-        mPolyline.setPoints(Arrays.asList(myLocation.getPosition(),mMarkerA.getPosition(), mMarkerB.getPosition(),mMarkerС.getPosition()));
+
+        // не рисует линию пока не будет получена координата
+        if (myLocation != null) {
+            mPolyline.setPoints(Arrays.asList(myLocation.getPosition(), mMarkerA.getPosition(), mMarkerB.getPosition(), mMarkerС.getPosition()));
+        }
     }
 
     private String formatNumber(double distance) {
@@ -306,21 +294,26 @@ if (myLocation == null) {
         return String.format("%4.3f%s", distance, unit);
     }
 
+
+    // Метод срабатывает при ЗАВЕРШЕНИИ перетаскивании маркеров, вызываются те методы что прописаны
     @Override
     public void onMarkerDragEnd(Marker marker) {
         showDistance();
         updatePolyline();
+        computeHeading();
     }
-
+    // Метод срабатывает при НАЧАЛЕ перетаскивании маркеров, вызываются те методы что прописаны
     @Override
     public void onMarkerDragStart(Marker marker) {
 
     }
 
+    // Метод срабатывает при перетаскивании маркеров, вызываются те методы что прописаны
     @Override
     public void onMarkerDrag(Marker marker) {
         showDistance();
         updatePolyline();
+        computeHeading();
     }
 
 
