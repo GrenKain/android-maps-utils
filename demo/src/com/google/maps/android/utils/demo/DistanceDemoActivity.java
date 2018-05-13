@@ -27,6 +27,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -39,6 +40,7 @@ import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
@@ -71,17 +73,17 @@ public class DistanceDemoActivity extends BaseDemoActivity  implements GoogleMap
     private Marker myLocation;
     private Polyline mPolyline;
     private BroadcastReceiver broadcastReceiver;
-
     private TextView textView;
     private Button btn_start, btn_stop;
+    private MapView mapView;
     GoogleMap map;
     private static final String TAG=DistanceDemoActivity.class.getName();
 
-    public double lat;
-    public double lng;
+    public double myLat;
+    public double myLng;
+    private LocationManager manager;
+    private Location loc;
 
-    TextView timerTextView;
-    long startTime = 0;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -104,18 +106,27 @@ public class DistanceDemoActivity extends BaseDemoActivity  implements GoogleMap
                   // double lat = (double) intent.getExtras().get("latitude");
 
 
-                    lat = intent.getExtras().getDouble("latitude");
-                    lng = intent.getExtras().getDouble("longitude");
+                    myLat = intent.getExtras().getDouble("latitude");
+                    myLng = intent.getExtras().getDouble("longitude");
                    // latlng.append("\n" +intent.getExtras().get("all"));
+                    // начальное отображение места при открытии и высота от него
 
 
-// ставит только одну точку на карте
+// ставит только одну точку на карте , делаем её зелёного цвета
 if (myLocation == null) {
-    myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true).icon(BitmapDescriptorFactory.fromResource(R.drawable.robot)));
-    myLocation.setTitle("myHome");
+    myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(myLat, myLng)).draggable(true).icon(
+            BitmapDescriptorFactory
+                    .defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+    myLocation.setTitle("You");
+    // окно с подключением к GPS
     latlng.setTextSize(20);
     latlng.setTextColor(Color.parseColor("#2EBA2E"));
     latlng.setText(" GPS подключен.");
+
+    // начальное отображение места при открытии карты и высота от него
+    getMap().moveCamera(CameraUpdateFactory
+            .newLatLngZoom(new LatLng(myLat, myLng), 5));
+
 }
 
 //Вычисляем угол мужду точками и обновляем
@@ -127,10 +138,11 @@ if (myLocation == null) {
            };
         }
         registerReceiver(broadcastReceiver,new IntentFilter("location_update"));
-
-
-
     }
+
+
+
+
     private void enable_buttons() {
 
         btn_start.setOnClickListener(new View.OnClickListener() {
@@ -153,35 +165,6 @@ if (myLocation == null) {
 
     }
 
-    // обновление моего местонахождения
-    /*
-    private void setValues() {
-        Timer timer = new Timer();
-
-        timer.scheduleAtFixedRate(new TimerTask() {
-
-            @Override
-            public void run() {
-             //   final float value = Utils.randInt(-10, 35);
-                myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true));
-                myLocation.setTitle("myHome");
-              //  latlng.setText("Coord lat lng: "+lat+" "+lng);
-
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.i("Info", "My coorginaty refresh: " + myLocation);
-                        myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true));
-                        myLocation.setTitle("myHome");
-
-                    }
-                });
-            }
-        }, 0, 3500);
-    }
-
-*/
     @Override
     protected void onResume() {
         super.onResume();
@@ -250,16 +233,10 @@ if (myLocation == null) {
 
     @Override
     protected void startDemo() {
-
-
-
         mTextView = (TextView) findViewById(R.id.textView);
         textDistance = (TextView) findViewById(R.id.textDistance);
         mGradus = (TextView) findViewById(R.id.mGradus);
         latlng= (TextView) findViewById(R.id.latlng);
-
-
-
         // начальное отображение места при открытии и высота от него
         getMap().moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(53.219240, 44.791624), 10));
         getMap().setOnMarkerDragListener(this);
@@ -269,11 +246,6 @@ if (myLocation == null) {
 
         // для маркера местонахождения dragganblle false (наверное)
 
-        /*
-        // моё местонахождение
-        myLocation = getMap().addMarker(new MarkerOptions().position(new LatLng(lat, lng)).draggable(true));
-        myLocation.setTitle("myHome");
-*/
 
 
 
